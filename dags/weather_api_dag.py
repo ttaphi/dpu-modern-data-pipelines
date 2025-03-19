@@ -40,6 +40,14 @@ def _validate_data():
         data = json.load(f)
 
     assert data.get("main") is not None
+
+def _validate_temperature_range():
+    with open(f"{DAG_FOLDER}/data.json", "r") as f:
+        data = json.load(f)
+
+    assert data.get("main").get("temp") >= 30 
+    assert data.get("main").get("temp") <= 45
+
     
 def _create_weather_table():
     pg_hook = PostgresHook(
@@ -86,7 +94,7 @@ with DAG(
     "weather_api_dag",
     default_args=default_args,
     schedule="0 */3 * * *",
-    start_date=timezone.datetime(2025, 2, 1),
+    start_date=timezone.datetime(2025, 3, 17),
     tags=["dpu"],
 ):
     start = EmptyOperator(task_id="start")
@@ -99,6 +107,11 @@ with DAG(
     validate_data = PythonOperator(
         task_id="validate_data",
         python_callable=_validate_data,
+    )
+
+    validate_temperature_range = PythonOperator(
+        task_id="validate_temperature_range",
+        python_callable=_validate_temperature_range,
     )
 
     create_weather_table = PythonOperator(
@@ -119,6 +132,6 @@ with DAG(
     )
     end = EmptyOperator(task_id="end")
 
-    start >> get_weather_data >> validate_data >> load_data_to_postgres >> send_email
+    start >> get_weather_data >> [validate_data, validate_temperature_range] >> load_data_to_postgres >> send_email
     start >> create_weather_table >> load_data_to_postgres
     send_email >> end

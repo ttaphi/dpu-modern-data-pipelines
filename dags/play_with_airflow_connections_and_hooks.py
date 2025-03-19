@@ -7,7 +7,7 @@ from airflow.utils import timezone
 def _get_data():
     pg_hook = PostgresHook(
         postgres_conn_id="my_postgres_conn",
-        schema="postgres"
+        schema="airflow"
     )
     connection = pg_hook.get_conn()
     cursor = connection.cursor()
